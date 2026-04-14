@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-# ARIA-Voice_AI_Agent
-A voice-driven AI assistant that converts speech into structured intent and executes intelligent actions using LLMs.
-=======
+
 # 🎙️ARIA - Voice AI Agent
 
 A modular, voice-driven AI assistant that converts speech into structured intent and executes intelligent actions using large language models.
