@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ARIA — Benchmark Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #04050d; --glass: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+  --cyan: #00f5d4; --violet: #8b5cf6; --cyan-dim: rgba(0,245,212,0.15);
+  --text: #dde3f5; --muted: rgba(221,227,245,0.45);
+  --ok: #22d3a5; --err: #f87171;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'IBM Plex Mono',monospace; min-height:100vh; padding:32px; }
+body::before {
+  content:''; position:fixed; inset:0;
+  background-image: linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:60px 60px; pointer-events:none; z-index:0;
+}
+.wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:24px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; }
+h1 { font-family:'Oxanium',sans-serif; font-size:22px; font-weight:700; letter-spacing:.06em; background:linear-gradient(120deg,var(--cyan),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.back-btn, .refresh-btn {
+  font-family:'Oxanium',sans-serif; font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  padding:7px 16px; border-radius:8px; border:1px solid rgba(0,245,212,.25); background:var(--cyan-dim); color:var(--cyan);
+  cursor:pointer; text-decoration:none; transition:all .2s; outline:none;
+}
+.back-btn:hover, .refresh-btn:hover { background:rgba(0,245,212,.22); }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.stat { background:var(--glass); border:1px solid var(--border); border-radius:14px; padding:20px 22px; backdrop-filter:blur(12px); }
+.stat-label { font-family:'Oxanium',sans-serif; font-size:10px; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.stat-value { font-family:'Oxanium',sans-serif; font-size:30px; font-weight:700; background:linear-gradient(120deg,var(--cyan),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.charts { display:grid; grid-template-columns:1.6fr 1fr; gap:14px; }
+.chart-box { background:var(--glass); border:1px solid var(--border); border-radius:14px; padding:20px 22px; backdrop-filter:blur(12px); }
+.chart-label { font-family:'Oxanium',sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+.chart-wrap { position:relative; height:170px; }
+.table-box { background:var(--glass); border:1px solid var(--border); border-radius:14px; overflow:hidden; backdrop-filter:blur(12px); }
+table { width:100%; border-collapse:collapse; }
+th { font-family:'Oxanium',sans-serif; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding:12px 18px; text-align:left; border-bottom:1px solid var(--border); background:rgba(0,0,0,.2); }
+td { padding:11px 18px; font-size:12px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,.02); }
+.tag { font-family:'Oxanium',sans-serif; font-size:10px; font-weight:600; padding:3px 9px; border-radius:20px; background:var(--cyan-dim); border:1px solid rgba(0,245,212,.2); color:var(--cyan); }
+.empty { padding:40px; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>📊 Benchmark Dashboard</h1>
+    <div style="display:flex;gap:10px">
+      <a class="back-btn" href="index.html">← Back to Chat</a>
+      <button class="refresh-btn" onclick="load()">↺ Refresh</button>
+    </div>
+  </div>
+ 
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Requests</div><div class="stat-value" id="sTotal">0</div></div>
+    <div class="stat"><div class="stat-label">Avg Response Time</div><div class="stat-value" id="sAvg">—</div></div>
+    <div class="stat"><div class="stat-label">Total Tokens</div><div class="stat-value" id="sTokens">0</div></div>
+  </div>
+ 
+  <div class="charts">
+    <div class="chart-box"><div class="chart-label">Response Time (last 10)</div><div class="chart-wrap"><canvas id="cTime"></canvas></div></div>
+    <div class="chart-box"><div class="chart-label">Intent Distribution</div><div class="chart-wrap"><canvas id="cIntent"></canvas></div></div>
+  </div>
+ 
+  <div class="table-box">
+    <table>
+      <thead><tr><th>#</th><th>Input</th><th>Intent</th><th>Time (s)</th><th>Tokens</th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+ 
+<script>
+let tc=null, ic=null;
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+ 
+async function load() {
+  try {
+    const r = await fetch('http://127.0.0.1:5000/benchmarks');
+    const d = await r.json();
+    render(d);
+  } catch(e) {
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="5" class="empty">⚠ Could not connect to backend</td></tr>';
+  }
+}
+ 
+function render(data) {
+  document.getElementById('sTotal').textContent = data.length;
+  const times  = data.map(d=>d.time).filter(t=>t>0);
+  const avgT   = times.length ? (times.reduce((a,b)=>a+b,0)/times.length).toFixed(2) : '—';
+  document.getElementById('sAvg').textContent    = avgT;
+  document.getElementById('sTokens').textContent = data.reduce((s,d)=>s+(d.tokens||0),0);
+ 
+  const tbody = document.getElementById('tbody');
+  if (!data.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">No data yet.</td></tr>'; return; }
+  tbody.innerHTML = [...data].reverse().slice(0,20).map((d,i)=>`
+    <tr><td style="color:rgba(221,227,245,.45)">${i+1}</td>
+    <td title="${esc(d.input)}">${esc(d.input.substring(0,50))}${d.input.length>50?'…':''}</td>
+    <td><span class="tag">${esc(d.intent||'—')}</span></td>
+    <td>${d.time>0?d.time+'s':'<span style="color:rgba(221,227,245,.45)">—</span>'}</td>
+    <td>${d.tokens||'<span style="color:rgba(221,227,245,.45)">—</span>'}</td></tr>`).join('');
+ 
+  const last10 = [...data].slice(-10);
+  if(tc) tc.destroy();
+  tc = new Chart(document.getElementById('cTime').getContext('2d'), {
+    type:'line',
+    data:{ labels:last10.map((_,i)=>'#'+(data.length-last10.length+i+1)), datasets:[{data:last10.map(d=>d.time),borderColor:'#00f5d4',backgroundColor:'rgba(0,245,212,.08)',borderWidth:2,pointBackgroundColor:'#00f5d4',pointRadius:3,tension:.4,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(221,227,245,.45)',font:{family:'IBM Plex Mono',size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'rgba(221,227,245,.45)',font:{family:'IBM Plex Mono',size:10}}}}}
+  });
+ 
+  const ic_data = {};
+  data.forEach(d=>{ const k=d.intent||'unknown'; ic_data[k]=(ic_data[k]||0)+1; });
+  if(ic) ic.destroy();
+  ic = new Chart(document.getElementById('cIntent').getContext('2d'), {
+    type:'doughnut',
+    data:{labels:Object.keys(ic_data),datasets:[{data:Object.values(ic_data),backgroundColor:['rgba(0,245,212,.7)','rgba(139,92,246,.7)','rgba(251,191,36,.7)','rgba(248,113,113,.7)'],borderColor:'rgba(4,5,13,.8)',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'rgba(221,227,245,.6)',font:{family:'Oxanium',size:10},padding:10,boxWidth:10}}}}
+  });
+}
+ 
+load();
+</script>
+</body>
+</html>
